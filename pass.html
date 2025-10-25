@@ -796,16 +796,15 @@
                 window.addEventListener('beforeinstallprompt', (e) => {
                   e.preventDefault();
                   deferredPrompt = e;
-                  installBtn.style.display = 'inline-block';
-                });
-            
-                installBtn.addEventListener('click', async () => {
-                //   installBtn.style.display = 'none';
+                  installBtn.addEventListener('click', async () => {
                   deferredPrompt.prompt();
                   const { outcome } = await deferredPrompt.userChoice;
                   console.log(`User response: ${outcome}`);
                   deferredPrompt = null;
                 });
+                });
+            
+                
 
             })
             .catch(err => console.log('SW fail:', err));
@@ -923,4 +922,5 @@
         });
     </script>
 </body>
+
 </html>
