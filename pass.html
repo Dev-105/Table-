@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passeport Numérique de Santé</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <script src="service-worker.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            primary: '#0F0B21',
+                            secondary: '#1A1438',
+                            accent: '#2D1B69'
+                        },
+                        purple: {
+                            dark: '#18016B',
+                            DEFAULT: '#C768FF',
+                            light: '#F5E6FF'
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'gradient': 'gradient 15s ease infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' }
+                        },
+                        gradient: {
+                            '0%, 100%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'left center'
+                            },
+                            '50%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'right center'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --primary-dark: #18016B;
+            --primary: #C768FF;
+            --primary-light: #F5E6FF;
+        }
+        
+        .dark {
+            --tw-bg-opacity: 1;
+            background-color: rgba(15, 11, 33, var(--tw-bg-opacity));
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .dark .glass {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glass-dark {
+            background: rgba(24, 1, 107, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(199, 104, 255, 0.3);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+        }
+        
+        .dark .gradient-bg {
+            background: linear-gradient(135deg, #0F0B21 0%, #2D1B69 50%, #18016B 100%);
+        }
+        
+        .text-gradient {
+            background: linear-gradient(90deg, var(--primary-dark), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .dark .text-gradient {
+            background: linear-gradient(90deg, #C768FF, #F5E6FF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .role-card {
+            transition: all 0.4s ease;
+            transform-style: preserve-3d;
+        }
+        
+        .role-card:hover {
+            transform: translateY(-10px) rotateX(5deg);
+            box-shadow: 0 25px 50px -12px rgba(199, 104, 255, 0.25);
+        }
+        
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .pulse-3d {
+            animation: pulse-3d 4s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-3d {
+            0%, 100% { 
+                transform: scale(1) rotateX(0deg) rotateY(0deg);
+                box-shadow: 0 0 0 0 rgba(199, 104, 255, 0.4);
+            }
+            50% { 
+                transform: scale(1.05) rotateX(5deg) rotateY(5deg);
+                box-shadow: 0 0 0 15px rgba(199, 104, 255, 0);
+            }
+        }
+        
+        #three-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+        }
+        
+        .dark #three-bg {
+            opacity: 0.8;
+        }
+        
+        .grid-pattern {
+            background-image: 
+                linear-gradient(rgba(199, 104, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(199, 104, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            background-position: center center;
+        }
+        
+        .dark .grid-pattern {
+            background-image: 
+                linear-gradient(rgba(199, 104, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(199, 104, 255, 0.05) 1px, transparent 1px);
+        }
+        
+        .neon-glow {
+            box-shadow: 0 0 10px rgba(199, 104, 255, 0.7),
+                        0 0 20px rgba(199, 104, 255, 0.5),
+                        0 0 30px rgba(199, 104, 255, 0.3);
+        }
+        
+        .dark-mode-transition {
+            transition: all 0.5s ease;
+        }
+        
+        .parallax-element {
+            transform-style: preserve-3d;
+        }
+        
+        .hexagon {
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+        }
+        
+        .cube {
+            transform-style: preserve-3d;
+            animation: rotate 20s infinite linear;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotateX(0) rotateY(0); }
+            to { transform: rotateX(360deg) rotateY(360deg); }
+        }
+        
+        .face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(199, 104, 255, 0.1);
+            border: 1px solid rgba(199, 104, 255, 0.3);
+        }
+        
+        .face-front { transform: translateZ(50px); }
+        .face-back { transform: translateZ(-50px) rotateY(180deg); }
+        .face-right { transform: translateX(50px) rotateY(90deg); }
+        .face-left { transform: translateX(-50px) rotateY(-90deg); }
+        .face-top { transform: translateY(-50px) rotateX(90deg); }
+        .face-bottom { transform: translateY(50px) rotateX(-90deg); }
+    </style>
+</head>
+<body class="bg-white dark:bg-dark-primary text-gray-800 dark:text-white dark-mode-transition grid-pattern overflow-x-hidden">
+    <!-- Three.js Background -->
+    <div id="three-bg"></div>
+    
+    <!-- Dark Mode Toggle -->
+    <div class="fixed bottom-6 right-6 z-50">
+        <button id="darkModeToggle" class="glass rounded-full w-9 h-9 text-purple-700 dark:text-purple-300 shadow-lg">
+            <i class="fas fa-moon dark:hidden"></i>
+            <i class="fas fa-sun hidden dark:block"></i>
+        </button>
+    </div>
+    
+    <!-- Header -->
+    <header class="glass dark:glass-dark text-gray-800 dark:text-white py-4 px-6 sticky top-0 z-40 backdrop-blur-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-full gradient-bg flex items-center justify-center neon-glow pulse-3d">
+                    <i class="fas fa-heartbeat text-white text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gradient">Passeport Santé</h1>
+            </div>
+            
+            <nav class="hidden md:flex space-x-8">
+                <a href="#features" class="hover:text-purple-500 dark:hover:text-purple-300 transition transform hover:-translate-y-1">Fonctionnalités</a>
+                <a href="#roles" class="hover:text-purple-500 dark:hover:text-purple-300 transition transform hover:-translate-y-1">Rôles</a>
+                <a href="#dashboard" class="hover:text-purple-500 dark:hover:text-purple-300 transition transform hover:-translate-y-1">Tableau de bord</a>
+                <a href="#contact" class="hover:text-purple-500 dark:hover:text-purple-300 transition transform hover:-translate-y-1">Contact</a>
+            </nav>
+            
+            <div class="flex items-center space-x-4">
+                <button class="gradient-bg text-white px-5 py-2.5 rounded-full font-semibold hover:opacity-90 transition transform hover:scale-105 shadow-lg">
+                    Connexion
+                </button>
+                <button class="md:hidden text-gray-800 dark:text-white">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="py-20 px-6 relative overflow-hidden">
+        <div class="container mx-auto flex flex-col md:flex-row items-center">
+            <div class="md:w-1/2 mb-12 md:mb-0" data-aos="fade-right">
+                <h1 class="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+                    <span class="text-gradient">Passeport</span><br>
+                    <span class="text-gray-700 dark:text-white">Numérique de Santé</span>
+                </h1>
+                <p class="text-xl mb-8 text-gray-600 dark:text-gray-300">Une solution innovante pour une gestion sécurisée et centralisée de vos données de santé avec technologie blockchain.</p>
+                <div class="flex flex-wrap gap-4">
+                    <button class="gradient-bg text-white px-8 py-4 rounded-full font-semibold hover:opacity-90 transition transform hover:scale-105 flex items-center shadow-lg" id="toapp">
+                        <i class="fas fa-mobile-alt mr-3"></i> Télécharger l'app
+                    </button>
+                    <button class="glass dark:glass-dark border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 px-8 py-4 rounded-full font-semibold hover:bg-purple-50 dark:hover:bg-dark-accent transition transform hover:scale-105 flex items-center">
+                        <i class="fas fa-desktop mr-3"></i> Essayer la démo
+                    </button>
+                </div>
+            </div>
+            <div class="md:w-1/2 flex justify-center" data-aos="fade-left" data-aos-delay="300">
+                <div class="relative">
+                    <!-- 3D Cube -->
+                    <div class="cube w-64 h-64 mx-auto mb-8">
+                        <div class="face face-front glass dark:glass-dark rounded-xl"></div>
+                        <div class="face face-back glass dark:glass-dark rounded-xl"></div>
+                        <div class="face face-right glass dark:glass-dark rounded-xl"></div>
+                        <div class="face face-left glass dark:glass-dark rounded-xl"></div>
+                        <div class="face face-top glass dark:glass-dark rounded-xl"></div>
+                        <div class="face face-bottom glass dark:glass-dark rounded-xl"></div>
+                    </div>
+                    
+                    <!-- Floating elements -->
+                    <div class="absolute top-0 -right-10 w-20 h-20">
+                        <div class="hexagon w-full h-full bg-purple-500 opacity-20 floating"></div>
+                    </div>
+                    <div class="absolute -bottom-10 -left-10 w-24 h-24">
+                        <div class="hexagon w-full h-full bg-purple-400 opacity-30 floating" style="animation-delay: 2s;"></div>
+                    </div>
+                    <div class="absolute top-1/2 -right-20 w-16 h-16">
+                        <div class="hexagon w-full h-full bg-purple-300 opacity-40 floating" style="animation-delay: 4s;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 px-6 bg-white dark:bg-dark-secondary relative">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 text-gradient" data-aos="fade-up">Fonctionnalités Principales</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="glass dark:glass-dark rounded-2xl p-6 role-card" data-aos="fade-up" data-aos-delay="100">
+                    <div class="w-16 h-16 rounded-full gradient-bg flex items-center justify-center mb-4 neon-glow">
+                        <i class="fas fa-shield-alt text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Sécurité Blockchain</h3>
+                    <p class="text-gray-600 dark:text-gray-300">Protection des données via Hedera Hashgraph, accès contrôlé par rôles et traçabilité immuable.</p>
+                </div>
+                
+                <!-- Feature 2 -->
+                <div class="glass dark:glass-dark rounded-2xl p-6 role-card" data-aos="fade-up" data-aos-delay="200">
+                    <div class="w-16 h-16 rounded-full gradient-bg flex items-center justify-center mb-4 neon-glow">
+                        <i class="fas fa-mobile-alt text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Interface Mobile</h3>
+                    <p class="text-gray-600 dark:text-gray-300">Application mobile intuitive adaptée à chaque utilisateur avec design responsive.</p>
+                </div>
+                
+                <!-- Feature 3 -->
+                <div class="glass dark:glass-dark rounded-2xl p-6 role-card" data-aos="fade-up" data-aos-delay="300">
+                    <div class="w-16 h-16 rounded-full gradient-bg flex items-center justify-center mb-4 neon-glow">
+                        <i class="fas fa-bolt text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Accès Urgence</h3>
+                    <p class="text-gray-600 dark:text-gray-300">QR code et break-glass pour un accès rapide aux informations vitales en situation d'urgence.</p>
+                </div>
+                
+                <!-- Feature 4 -->
+                <div class="glass dark:glass-dark rounded-2xl p-6 role-card" data-aos="fade-up" data-aos-delay="400">
+                    <div class="w-16 h-16 rounded-full gradient-bg flex items-center justify-center mb-4 neon-glow">
+                        <i class="fas fa-prescription text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Ordonnances NFT</h3>
+                    <p class="text-gray-600 dark:text-gray-300">Génération d'ordonnances en NFT pour une traçabilité complète et une lutte contre la fraude.</p>
+                </div>
+                
+                <!-- Feature 5 -->
+                <div class="glass dark:glass-dark rounded-2xl p-6 role-card" data-aos="fade-up" data-aos-delay="500">
+                    <div class="w-16 h-16 rounded-full gradient-bg flex items-center justify-center mb-4 neon-glow">
+                        <i class="fas fa-brain text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">IA et Analytics</h3>
+                    <p class="text-gray-600 dark:text-gray-300">Détection d'anomalies, alertes intelligentes et analytics pour un suivi santé personnalisé.</p>
+                </div>
+                
+                <!-- Feature 6 -->
+                <div class="glass dark:glass-dark rounded-2xl p-6 role-card" data-aos="fade-up" data-aos-delay="600">
+                    <div class="w-16 h-16 rounded-full gradient-bg flex items-center justify-center mb-4 neon-glow">
+                        <i class="fas fa-exchange-alt text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Partage Sécurisé</h3>
+                    <p class="text-gray-600 dark:text-gray-300">Partage contrôlé de documents médicaux entre professionnels de santé autorisés.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Roles Section -->
+    <section id="roles" class="py-20 px-6 bg-gray-50 dark:bg-dark-primary relative">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 text-gradient" data-aos="fade-up">Interfaces par Rôle</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Patient Card -->
+                <div class="glass dark:glass-dark rounded-2xl p-6 role-card" data-aos="fade-up" data-aos-delay="100">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-14 h-14 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                            <i class="fas fa-user-injured text-purple-700 dark:text-purple-300 text-2xl"></i>
+                        </div>
+                        <span class="bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-xs font-semibold px-3 py-1 rounded-full">Patient</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Interface Patient</h3>
+                    <ul class="text-gray-600 dark:text-gray-300 space-y-2 mb-6">
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-purple-500 mt-1 mr-2"></i>
+                            <span>Tableau de bord santé personnalisé</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-purple-500 mt-1 mr-2"></i>
+                            <span>Accès à l'historique médical complet</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-purple-500 mt-1 mr-2"></i>
+                            <span>QR code d'urgence</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-purple-500 mt-1 mr-2"></i>
+                            <span>Notifications intelligentes</span>
+                        </li>
+                    </ul>
+                    <button class="w-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 py-3 rounded-lg font-semibold hover:bg-purple-200 dark:hover:bg-purple-800 transition transform hover:scale-105">
+                        Voir la démo
+                    </button>
+                </div>
+                
+                <!-- Médecin Card -->
+                <div class="glass dark:glass-dark rounded-2xl p-6 role-card" data-aos="fade-up" data-aos-delay="200">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                            <i class="fas fa-user-md text-blue-700 dark:text-blue-300 text-2xl"></i>
+                        </div>
+                        <span class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-semibold px-3 py-1 rounded-full">Médecin</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Interface Médecin</h3>
+                    <ul class="text-gray-600 dark:text-gray-300 space-y-2 mb-6">
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-blue-500 mt-1 mr-2"></i>
+                            <span>Accès sécurisé aux dossiers patients</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-blue-500 mt-1 mr-2"></i>
+                            <span>Création d'ordonnances NFT</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-blue-500 mt-1 mr-2"></i>
+                            <span>Logs et audit des consultations</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-blue-500 mt-1 mr-2"></i>
+                            <span>Communication avec les patients</span>
+                        </li>
+                    </ul>
+                    <button class="w-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 py-3 rounded-lg font-semibold hover:bg-blue-200 dark:hover:bg-blue-800 transition transform hover:scale-105">
+                        Voir la démo
+                    </button>
+                </div>
+                
+                <!-- Secouriste Card -->
+                <div class="glass dark:glass-dark rounded-2xl p-6 role-card" data-aos="fade-up" data-aos-delay="300">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+                            <i class="fas fa-ambulance text-red-700 dark:text-red-300 text-2xl"></i>
+                        </div>
+                        <span class="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-xs font-semibold px-3 py-1 rounded-full">Secouriste</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Interface Secouriste</h3>
+                    <ul class="text-gray-600 dark:text-gray-300 space-y-2 mb-6">
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-red-500 mt-1 mr-2"></i>
+                            <span>Accès rapide aux informations vitales</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-red-500 mt-1 mr-2"></i>
+                            <span>Scan QR code d'urgence</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-red-500 mt-1 mr-2"></i>
+                            <span>Break-glass pour accès temporaire</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-red-500 mt-1 mr-2"></i>
+                            <span>Guidance IA pour premiers soins</span>
+                        </li>
+                    </ul>
+                    <button class="w-full bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 py-3 rounded-lg font-semibold hover:bg-red-200 dark:hover:bg-red-800 transition transform hover:scale-105">
+                        Voir la démo
+                    </button>
+                </div>
+                
+                <!-- Pharmacien Card -->
+                <div class="glass dark:glass-dark rounded-2xl p-6 role-card" data-aos="fade-up" data-aos-delay="400">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                            <i class="fas fa-prescription-bottle text-green-700 dark:text-green-300 text-2xl"></i>
+                        </div>
+                        <span class="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-semibold px-3 py-1 rounded-full">Pharmacien</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Interface Pharmacien</h3>
+                    <ul class="text-gray-600 dark:text-gray-300 space-y-2 mb-6">
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-green-500 mt-1 mr-2"></i>
+                            <span>Vérification des ordonnances NFT</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-green-500 mt-1 mr-2"></i>
+                            <span>Gestion des stocks et alertes</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-green-500 mt-1 mr-2"></i>
+                            <span>Notifications aux patients</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-green-500 mt-1 mr-2"></i>
+                            <span>Audit et traçabilité complète</span>
+                        </li>
+                    </ul>
+                    <button class="w-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 py-3 rounded-lg font-semibold hover:bg-green-200 dark:hover:bg-green-800 transition transform hover:scale-105">
+                        Voir la démo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard Preview -->
+    <section id="dashboard" class="py-20 px-6 bg-white dark:bg-dark-secondary relative">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 text-gradient" data-aos="fade-up">Tableau de Bord Central</h2>
+            
+            <div class="glass-dark rounded-3xl p-8 text-white max-w-5xl mx-auto neon-glow" data-aos="zoom-in">
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
+                    <h3 class="text-3xl font-bold mb-4 lg:mb-0">Tableau de Bord Administratif</h3>
+                    <div class="flex space-x-4">
+                        <button class="bg-purple-600 hover:bg-purple-700 px-5 py-2.5 rounded-lg transition transform hover:scale-105 flex items-center">
+                            <i class="fas fa-sync-alt mr-2"></i> Actualiser
+                        </button>
+                        <button class="bg-purple-600 hover:bg-purple-700 px-5 py-2.5 rounded-lg transition transform hover:scale-105 flex items-center">
+                            <i class="fas fa-download mr-2"></i> Exporter
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+                    <div class="bg-purple-800 bg-opacity-50 rounded-xl p-5 text-center backdrop-blur-sm">
+                        <div class="text-3xl font-bold mb-2">1,254</div>
+                        <div class="text-sm text-purple-200">Patients enregistrés</div>
+                    </div>
+                    <div class="bg-purple-800 bg-opacity-50 rounded-xl p-5 text-center backdrop-blur-sm">
+                        <div class="text-3xl font-bold mb-2">342</div>
+                        <div class="text-sm text-purple-200">Professionnels de santé</div>
+                    </div>
+                    <div class="bg-purple-800 bg-opacity-50 rounded-xl p-5 text-center backdrop-blur-sm">
+                        <div class="text-3xl font-bold mb-2">89</div>
+                        <div class="text-sm text-purple-200">Interventions d'urgence</div>
+                    </div>
+                    <div class="bg-purple-800 bg-opacity-50 rounded-xl p-5 text-center backdrop-blur-sm">
+                        <div class="text-3xl font-bold mb-2">2,147</div>
+                        <div class="text-sm text-purple-200">Ordonnances NFT</div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-purple-800 bg-opacity-50 rounded-xl p-6 backdrop-blur-sm">
+                        <h4 class="font-bold mb-4 text-xl">Activité Récente</h4>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center mr-4">
+                                        <i class="fas fa-user-md"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium">Consultation Dr. Martin</div>
+                                        <div class="text-xs text-purple-300">Il y a 2 heures</div>
+                                    </div>
+                                </div>
+                                <span class="bg-purple-600 text-xs px-3 py-1.5 rounded-full">Terminé</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center mr-4">
+                                        <i class="fas fa-prescription-bottle"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium">Ordonnance délivrée</div>
+                                        <div class="text-xs text-purple-300">Il y a 4 heures</div>
+                                    </div>
+                                </div>
+                                <span class="bg-green-600 text-xs px-3 py-1.5 rounded-full">Validé</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center mr-4">
+                                        <i class="fas fa-ambulance"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium">Accès urgence</div>
+                                        <div class="text-xs text-purple-300">Il y a 6 heures</div>
+                                    </div>
+                                </div>
+                                <span class="bg-red-600 text-xs px-3 py-1.5 rounded-full">Urgent</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-purple-800 bg-opacity-50 rounded-xl p-6 backdrop-blur-sm">
+                        <h4 class="font-bold mb-4 text-xl">Statistiques d'Accès</h4>
+                        <div class="space-y-5">
+                            <div>
+                                <div class="flex justify-between mb-2">
+                                    <span>Patients</span>
+                                    <span>72%</span>
+                                </div>
+                                <div class="w-full bg-purple-700 rounded-full h-3">
+                                    <div class="bg-purple-400 h-3 rounded-full" style="width: 72%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between mb-2">
+                                    <span>Médecins</span>
+                                    <span>58%</span>
+                                </div>
+                                <div class="w-full bg-purple-700 rounded-full h-3">
+                                    <div class="bg-blue-400 h-3 rounded-full" style="width: 58%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between mb-2">
+                                    <span>Secouristes</span>
+                                    <span>15%</span>
+                                </div>
+                                <div class="w-full bg-purple-700 rounded-full h-3">
+                                    <div class="bg-red-400 h-3 rounded-full" style="width: 15%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between mb-2">
+                                    <span>Pharmaciens</span>
+                                    <span>42%</span>
+                                </div>
+                                <div class="w-full bg-purple-700 rounded-full h-3">
+                                    <div class="bg-green-400 h-3 rounded-full" style="width: 42%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- QR Code Emergency Section -->
+    <section class="py-20 px-6 bg-gray-50 dark:bg-dark-primary relative">
+        <div class="container mx-auto">
+            <div class="flex flex-col lg:flex-row items-center">
+                <div class="lg:w-1/2 mb-12 lg:mb-0" data-aos="fade-right">
+                    <h2 class="text-4xl font-bold mb-6 text-gradient">Accès Urgence avec QR Code</h2>
+                    <p class="text-gray-600 dark:text-gray-300 mb-6 text-lg">En situation d'urgence, les secouristes peuvent scanner le QR code du patient pour accéder instantanément aux informations vitales : allergies, maladies chroniques, groupe sanguin, etc.</p>
+                    <ul class="text-gray-600 dark:text-gray-300 space-y-4 mb-8">
+                        <li class="flex items-start">
+                            <i class="fas fa-shield-alt text-purple-500 mt-1 mr-4 text-xl"></i>
+                            <span class="text-lg">Accès limité aux informations essentielles uniquement</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-history text-purple-500 mt-1 mr-4 text-xl"></i>
+                            <span class="text-lg">Journalisation automatique sur Hedera</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-bell text-purple-500 mt-1 mr-4 text-xl"></i>
+                            <span class="text-lg">Notification immédiate au patient et à son médecin</span>
+                        </li>
+                    </ul>
+                    <button class="gradient-bg text-white px-8 py-4 rounded-full font-semibold hover:opacity-90 transition transform hover:scale-105 flex items-center shadow-lg text-lg">
+                        <i class="fas fa-qrcode mr-3"></i> Générer mon QR code
+                    </button>
+                </div>
+                <div class="lg:w-1/2 flex justify-center" data-aos="fade-left" data-aos-delay="300">
+                    <div class="relative">
+                        <div class="glass dark:glass-dark rounded-3xl p-10 w-80 h-80 mx-auto flex items-center justify-center neon-glow">
+                            <div class="bg-white p-6 rounded-xl">
+                                <!-- QR Code Placeholder -->
+                                <div class="grid grid-cols-4 gap-1.5 w-48 h-48">
+                                    <!-- This is a simple QR code representation -->
+                                    <div class="bg-black rounded"></div>
+                                    <div class="bg-black rounded"></div>
+                                    <div class="bg-black rounded"></div>
+                                    <div class="bg-black rounded"></div>
+                                    <div class="bg-black rounded"></div>
+                                    <div class="bg-white rounded"></div>
+                                    <div class="bg-white rounded"></div>
+                                    <div class="bg-black rounded"></div>
+                                    <div class="bg-black rounded"></div>
+                                    <div class="bg-white rounded"></div>
+                                    <div class="bg-black rounded"></div>
+                                    <div class="bg-black rounded"></div>
+                                    <div class="bg-black rounded"></div>
+                                    <div class="bg-white rounded"></div>
+                                    <div class="bg-white rounded"></div>
+                                    <div class="bg-black rounded"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="absolute -top-6 -right-6 w-12 h-12 bg-purple-400 rounded-full pulse-3d"></div>
+                        <div class="absolute -bottom-6 -left-6 w-16 h-16 bg-purple-300 rounded-full opacity-70 floating"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="py-20 px-6 bg-white dark:bg-dark-secondary relative">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 text-gradient" data-aos="fade-up">Contactez-nous</h2>
+            
+            <div class="max-w-2xl mx-auto glass dark:glass-dark rounded-3xl p-10 neon-glow" data-aos="zoom-in">
+                <form class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-gray-700 dark:text-gray-300 mb-2 font-medium" for="name">Nom</label>
+                            <input type="text" id="name" class="w-full px-5 py-3.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-dark-primary focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 dark:text-gray-300 mb-2 font-medium" for="email">Email</label>
+                            <input type="email" id="email" class="w-full px-5 py-3.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-dark-primary focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300 mb-2 font-medium" for="subject">Sujet</label>
+                        <input type="text" id="subject" class="w-full px-5 py-3.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-dark-primary focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300 mb-2 font-medium" for="message">Message</label>
+                        <textarea id="message" rows="5" class="w-full px-5 py-3.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-dark-primary focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="w-full gradient-bg text-white py-4 rounded-xl font-semibold hover:opacity-90 transition transform hover:scale-105 shadow-lg text-lg">
+                        Envoyer le message
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="gradient-bg text-white py-16 px-6">
+        <div class="container mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-10">
+                <div>
+                    <div class="flex items-center space-x-3 mb-6">
+                        <div class="w-12 h-12 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
+                            <i class="fas fa-heartbeat text-white text-xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold">Passeport Santé</h3>
+                    </div>
+                    <p class="text-purple-200">Une solution innovante pour une gestion sécurisée de vos données de santé.</p>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-bold mb-6">Liens Rapides</h4>
+                    <ul class="space-y-3">
+                        <li><a href="#" class="text-purple-200 hover:text-white transition transform hover:translate-x-2 block">Accueil</a></li>
+                        <li><a href="#features" class="text-purple-200 hover:text-white transition transform hover:translate-x-2 block">Fonctionnalités</a></li>
+                        <li><a href="#roles" class="text-purple-200 hover:text-white transition transform hover:translate-x-2 block">Rôles</a></li>
+                        <li><a href="#dashboard" class="text-purple-200 hover:text-white transition transform hover:translate-x-2 block">Tableau de bord</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-bold mb-6">Légal</h4>
+                    <ul class="space-y-3">
+                        <li><a href="#" class="text-purple-200 hover:text-white transition transform hover:translate-x-2 block">Politique de confidentialité</a></li>
+                        <li><a href="#" class="text-purple-200 hover:text-white transition transform hover:translate-x-2 block">Conditions d'utilisation</a></li>
+                        <li><a href="#" class="text-purple-200 hover:text-white transition transform hover:translate-x-2 block">Mentions légales</a></li>
+                        <li><a href="#" class="text-purple-200 hover:text-white transition transform hover:translate-x-2 block">RGPD</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-bold mb-6">Contact</h4>
+                    <ul class="space-y-3">
+                        <li class="flex items-center">
+                            <i class="fas fa-envelope mr-3 text-purple-300"></i>
+                            <span class="text-purple-200">contact@passeportsante.fr</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-phone mr-3 text-purple-300"></i>
+                            <span class="text-purple-200">+33 1 23 45 67 89</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-map-marker-alt mr-3 text-purple-300"></i>
+                            <span class="text-purple-200">Paris, France</span>
+                        </li>
+                    </ul>
+                    
+                    <div class="flex space-x-4 mt-6">
+                        <a href="#" class="w-12 h-12 rounded-full bg-purple-700 bg-opacity-50 flex items-center justify-center hover:bg-purple-600 transition transform hover:scale-110">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="w-12 h-12 rounded-full bg-purple-700 bg-opacity-50 flex items-center justify-center hover:bg-purple-600 transition transform hover:scale-110">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                        <a href="#" class="w-12 h-12 rounded-full bg-purple-700 bg-opacity-50 flex items-center justify-center hover:bg-purple-600 transition transform hover:scale-110">
+                            <i class="fab fa-github"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="border-t border-purple-700 mt-12 pt-8 text-center text-purple-300">
+                <p>&copy; 2023 Passeport Numérique de Santé. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+    <!-- <script src="service-worker.js"></script> -->
+    <script>
+        // service-worker.js Register the Service Worker
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('service-worker.js')
+            .then(() => {console.log('✅ Service Worker registered')
+                let deferredPrompt;
+                const installBtn = document.getElementById('toapp');
+
+                window.addEventListener('beforeinstallprompt', (e) => {
+                  e.preventDefault();
+                  deferredPrompt = e;
+                  installBtn.style.display = 'inline-block';
+                });
+            
+                installBtn.addEventListener('click', async () => {
+                //   installBtn.style.display = 'none';
+                  deferredPrompt.prompt();
+                  const { outcome } = await deferredPrompt.userChoice;
+                  console.log(`User response: ${outcome}`);
+                  deferredPrompt = null;
+                });
+
+            })
+            .catch(err => console.log('SW fail:', err));
+        }
+
+        
+
+
+        // Three.js Background
+        function initThreeJS() {
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('three-bg').appendChild(renderer.domElement);
+            
+            // Create a grid of points
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particlesCount = 1500;
+            
+            const posArray = new Float32Array(particlesCount * 3);
+            
+            for(let i = 0; i < particlesCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 10;
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            
+            // Material
+            const particlesMaterial = new THREE.PointsMaterial({
+                size: 0.02,
+                color: new THREE.Color(0.78, 0.41, 1.0),
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            // Points mesh
+            const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particlesMesh);
+            
+            camera.position.z = 5;
+            
+            // Mouse movement effect
+            let mouseX = 0;
+            let mouseY = 0;
+            
+            document.addEventListener('mousemove', (event) => {
+                mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+                mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+            });
+            
+            // Animation
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                particlesMesh.rotation.x += 0.001;
+                particlesMesh.rotation.y += 0.002;
+                
+                // Add subtle movement based on mouse position
+                particlesMesh.rotation.x += mouseY * 0.0005;
+                particlesMesh.rotation.y += mouseX * 0.0005;
+                
+                renderer.render(scene, camera);
+            }
+            
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+        
+        // Initialize Three.js when the page loads
+        window.addEventListener('load', initThreeJS);
+        
+        // Dark Mode Toggle
+        document.getElementById('darkModeToggle').addEventListener('click', function() {
+            document.documentElement.classList.toggle('dark');
+            
+            // Save user preference
+            if (document.documentElement.classList.contains('dark')) {
+                localStorage.setItem('theme', 'dark');
+            } else {
+                localStorage.setItem('theme', 'light');
+            }
+        });
+        
+        // Check for saved theme preference
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        }
+        
+        // Initialize AOS
+        AOS.init({
+            duration: 1000,
+            once: true,
+            offset: 100
+        });
+        
+        // Parallax effect for elements
+        document.addEventListener('mousemove', function(e) {
+            const parallaxElements = document.querySelectorAll('.parallax-element');
+            
+            parallaxElements.forEach(function(el) {
+                const speed = el.getAttribute('data-speed');
+                const x = (window.innerWidth - e.pageX * speed) / 100;
+                const y = (window.innerHeight - e.pageY * speed) / 100;
+                
+                el.style.transform = `translateX(${x}px) translateY(${y}px)`;
+            });
+        });
+    </script>
+</body>
+</html>
