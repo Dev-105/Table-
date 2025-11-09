@@ -36,11 +36,16 @@ function Cmd(time = 1000) {
             <span>C:\Users></span> <input type="text" autofocus class="bg-transparent border-none outline-none text-xl">
         </div>
     </div>`;
-    setTimeout(() => {
+            function isPcScreen() {
+  return window.innerWidth >= 1024; // true if screen width >= 1024px
+}
+    if(isPcScreen()){
+                setTimeout(() => {
         document.body.insertAdjacentHTML('beforeend', cmd);
     }, time);
     setTimeout(() => {
             let cmdInput = document.getElementById('cmd');
             cmdInput.remove();
         }, time + 500);
+    }
         }
